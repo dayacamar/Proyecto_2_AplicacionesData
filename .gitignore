@@ -1,0 +1,25 @@
+# Ignorar archivos de datos crudos pesados (Saber 11 y descargas originales)
+Data/Raw/
+data/raw/
+
+# Entornos virtuales de Python
+venv/
+.venv/
+env/
+
+# Archivos de caché y compilación de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Checkpoints de Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Configuraciones locales de editores y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secretos o credenciales locales de Streamlit (si llegaran a usarlas)
+.streamlit/secrets.toml
