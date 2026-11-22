@@ -17,12 +17,17 @@ def limpiar_codigo_divipola(serie: pd.Series, longitud: int = 5) -> pd.Series:
     return (serie.astype(str).str.strip().str.replace(r"\.0$", "", regex=True).str.zfill(longitud))
 
 def a_numerico(serie: pd.Series) -> pd.Series:
-  """Convierte columnas numéricas en formato colombiano (punto miles, coma decimal)."""
-  if pd.api.types.is_numeric_dtype(serie):
-      return pd.to_numeric(serie, errors="coerce")
-  limpia = (serie.astype(str).str.strip().str.replace(".", "", regex=False).str.replace(",", ".", regex=False))
-  return pd.to_numeric(limpia, errors="coerce")
-
+    """Convierte columnas numéricas en formato colombiano (punto miles, coma decimal, signo %)."""
+    if pd.api.types.is_numeric_dtype(serie):
+        return pd.to_numeric(serie, errors="coerce")
+    limpia = (
+        serie.astype(str)
+        .str.strip()
+        .str.replace("%", "", regex=False)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+    )
+    return pd.to_numeric(limpia, errors="coerce")
 #En la siguiente funcion se limpia el dataset 1: Educacion basica y media por municipio
 
 def procesar_basica_media(ruta: Path) -> pd.DataFrame:
@@ -201,7 +206,7 @@ def procesar_educacion_superior(ruta: Path) -> pd.DataFrame:
     col_mpio = ""
     col_anio = ""
     for c in df.columns:
-        if "MUNICIPIO" in c and "C" in c:
+        if "MUNICIPIO" in c and ("COD" in c or "CÓD" in c):
             col_mpio = c
         if "AÑO" in c or "A_O" in c:
             col_anio = c
@@ -352,16 +357,48 @@ def ejecutar_etl():
     maestro = maestro.drop(columns=["_pond_s11", "_pond_calidad", "_mpio_con_ies"])
 
     # Guardar productos finales en Data/Processed/
-    maestro.to_parquet(PROCESSED_DIR / "maestro_municipal_2017_2021.parquet", index=False)
     maestro.to_csv(PROCESSED_DIR / "maestro_municipal_2017_2021.csv", index=False)
-
-    depto.to_parquet(PROCESSED_DIR / "maestro_departamental_2017_2021.parquet", index=False)
     depto.to_csv(PROCESSED_DIR / "maestro_departamental_2017_2021.csv", index=False)
 
     print("\n3. Archivos generados exitosamente en Data/Processed/:")
-    print("   - maestro_municipal_2017_2021 (.parquet y .csv)")
-    print("   - maestro_departamental_2017_2021 (.parquet y .csv)")
-
+    print("   - maestro_municipal_2017_2021.csv")
+    print("   - maestro_departamental_2017_2021.csv")
 
 if __name__ == "__main__":
     ejecutar_etl()
+    #Lo que hay debajo de esto es una prueba que verifica que todo funciona#
+    mpio = pd.read_csv(
+        "Data/Processed/maestro_municipal_2017_2021.csv",
+        dtype={"cod_mpio": str, "cod_depto": str}
+    )
+    depto = pd.read_csv(
+        "Data/Processed/maestro_departamental_2017_2021.csv",
+        dtype={"cod_depto": str}
+    )
+
+    print("\n=== 1. DIMENSIONES Y LLAVES ===")
+    print("Filas y columnas municipal:", mpio.shape)
+    print("Años presentes:", sorted(mpio["anio"].unique()))
+    print("Longitud de cod_mpio (debe ser {5}):", set(mpio["cod_mpio"].str.len()))
+    print("Longitud de cod_depto (debe ser {2}):", set(mpio["cod_depto"].str.len()))
+
+    print("\n=== 2. RANGOS NUMÉRICOS (VERIFICAR QUE NO SE INFLARON DECIMALES) ===")
+    cols_revisar = [
+        "deserción_media",
+        "aprobación_media",
+        "sedes_conectadas_a_internet",
+        "indice_calidad_media",
+        "punt_global_prom",
+        "matricula_pregrado",
+        "razon_pregrado_por_100_s11",
+    ]
+    print(mpio[cols_revisar].describe().loc[["count", "mean", "min", "50%", "max"]])
+
+    print("\n=== 3. COBERTURA DEL CRUCE ENTRE FUENTES ===")
+    print("Municipios-año sin datos Saber 11:", mpio["punt_global_prom"].isna().sum())
+    print("Distribución oferta IES:\n", mpio["tiene_oferta_ies"].value_counts())
+
+    print("\n=== 4. MUESTRA REAL DE CONTROL (MEDELLÍN 2019 Y UN MUNICIPIO PEQUEÑO) ===")
+    print(mpio[(mpio["cod_mpio"] == "05001") & (mpio["anio"] == 2019)][
+        ["cod_mpio", "municipio", "anio", "indice_calidad_media", "punt_global_prom", "matricula_pregrado", "tiene_oferta_ies"]
+    ])
