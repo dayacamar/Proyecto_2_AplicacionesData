@@ -1,3 +1,4 @@
+from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -18,13 +19,16 @@ st.set_page_config(
 
 @st.cache_data
 def cargar_datos():
+    ruta_processed = Path("Data/Processed")
 
     base = pd.read_csv(
-        r"C:\Users\juana\OneDrive\Desktop\Proyecto_2_AplicacionesData\Data\Processed\analisis_municipal.csv"
+        ruta_processed / "analisis_municipal.csv",
+        dtype={"cod_mpio": str, "cod_depto": str}
     )
 
     maestro = pd.read_csv(
-        r"C:\Users\juana\OneDrive\Desktop\Proyecto_2_AplicacionesData\Data\Processed\maestro_municipal_2017_2021.csv"
+        ruta_processed / "maestro_municipal_2017_2021.csv",
+        dtype={"cod_mpio": str, "cod_depto": str}
     )
 
     return base, maestro
